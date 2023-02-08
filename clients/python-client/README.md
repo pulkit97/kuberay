@@ -70,30 +70,15 @@ Finally, the cluster_api is the one you always use to implement your cluster cha
 
 ## Code Organization
 
-clients/
+clients
+
 └── python-client
+
     ├── README.md
     ├── examples
-    │   ├── complete-example.py
-    │   ├── use-builder.py
-    │   ├── use-director.py
-    │   ├── use-raw-with-api.py
-    │   └── use-utils.py
     ├── python_client
-    │   ├── LICENSE
-    │   ├── __init__.py
-    │   ├── constants.py
-    │   ├── kuberay_cluster_api.py
-    │   ├── pyproject.toml
-    │   ├── setup.cfg
     │   └── utils
-    │       ├── __init__.py
-    │       ├── kuberay_cluster_builder.py
-    │       └── kuberay_cluster_utils.py
     └── python_client_test
-        ├── README.md
-        ├── test_director.py
-        └── test_utils.py
 
 ## For developers
 
