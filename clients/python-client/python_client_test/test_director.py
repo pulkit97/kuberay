@@ -6,6 +6,25 @@ class TestDirector(unittest.TestCase):
     def __init__(self, methodName: str = ...) -> None:
         super().__init__(methodName)
         self.director = kuberay_cluster_builder.Director()
+    
+    def test_build_basic_cluster(self):
+        cluster = self.director.build_basic_cluster(name="basic-cluster")
+        # testing meta
+        actual = cluster["metadata"]["name"]
+        expected = "basic-cluster"
+        self.assertEqual(actual, expected)
+
+        actual = cluster["metadata"]["namespace"]
+        expected = "default"
+        self.assertEqual(actual, expected)
+
+        # testing the head pod
+        actual = cluster["spec"]["headGroupSpec"]["template"]["spec"]["containers"][0][
+            "resources"
+        ]["requests"]["cpu"]
+        expected = "1"
+        self.assertEqual(actual, expected)
+
 
     def test_build_small_cluster(self):
         cluster = self.director.build_small_cluster(name="small-cluster")

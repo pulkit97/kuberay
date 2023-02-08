@@ -1,10 +1,11 @@
 """
-Set of helper methods to manage rayclusters. Requires Python 3.9 and higher
+Set of helper methods to manage rayclusters. Requires Python 3.6 and higher
 """
 
 import constants
 import logging
 import copy
+import re
 from typing import Any, Tuple
 
 
@@ -48,6 +49,9 @@ class ClusterUtils:
         Returns:
             dict: The updated cluster dictionary with metadata and ray version populated.
         """
+
+        assert self.is_valid_name(name)
+
         cluster["apiVersion"] = "{group}/{version}".format(
             group=constants.GROUP, version=constants.VERSION
         )
@@ -202,12 +206,13 @@ class ClusterUtils:
                     assert v
         except AssertionError as e:
             log.error(
-                "error creating ray head, the parameters are not fully defined. {} = {}".format(
+                "error populating worker group, the parameters are not fully defined. {} = {}".format(
                     k, v
                 )
             )
             return cluster, False
 
+        assert self.is_valid_name(group_name)
         assert max_replicas >= min_replicas
 
         worker_group: dict[str, Any] = {
@@ -288,7 +293,7 @@ class ClusterUtils:
                     assert v
         except AssertionError as e:
             log.error(
-                "error creating ray head, the parameters are not fully defined. {} = {}".format(
+                "error updating worker group, the parameters are not fully defined. {} = {}".format(
                     k, v
                 )
             )
@@ -303,6 +308,87 @@ class ClusterUtils:
                 cluster["spec"]["workerGroupSpecs"][i]["maxReplicas"] = max_replicas
                 cluster["spec"]["workerGroupSpecs"][i]["minReplicas"] = min_replicas
                 cluster["spec"]["workerGroupSpecs"][i]["replicas"] = replicas
+                return cluster, True
+
+        return cluster, False
+
+    def update_worker_group_resources(
+        self,
+        cluster: dict,
+        group_name: str,
+        cpu_requests: str,
+        memory_requests: str,
+        cpu_limits: str,
+        memory_limits: str,
+        container_name="unspecified",
+    ) -> Tuple[dict, bool]:
+        """Update the resources for a worker group pods in the cluster.
+
+        Parameters:
+        - cluster (dict): The cluster to update.
+        - group_name (str): The name of the worker group to update.
+        - cpu_requests (str): CPU requests for the worker pods.
+        - memory_requests (str): Memory requests for the worker pods.
+        - cpu_limits (str): CPU limits for the worker pods.
+        - memory_limits (str): Memory limits for the worker pods.
+
+        Returns:
+        Tuple[dict, bool]: A tuple containing the updated cluster and a flag indicating whether the update was successful.
+        """
+        try:
+            arguments = locals()
+            for k, v in arguments.items():
+                if k != "min_replicas":
+                    assert v
+        except AssertionError as e:
+            log.error(
+                "error updating worker group, the parameters are not fully defined. {} = {}".format(
+                    k, v
+                )
+            )
+            return cluster, False
+
+        assert cluster["spec"]["workerGroupSpecs"]
+
+        worker_groups = cluster["spec"]["workerGroupSpecs"]
+
+        def add_values(group_index: int, container_index: int):
+            worker_groups[group_index]["template"]["spec"]["containers"][
+                container_index
+            ]["resources"]["requests"]["cpu"] = cpu_requests
+            worker_groups[group_index]["template"]["spec"]["containers"][
+                container_index
+            ]["resources"]["requests"]["memory"] = memory_requests
+            worker_groups[group_index]["template"]["spec"]["containers"][
+                container_index
+            ]["resources"]["limits"]["cpu"] = cpu_limits
+            worker_groups[group_index]["template"]["spec"]["containers"][
+                container_index
+            ]["resources"]["limits"]["memory"] = memory_limits
+
+        for group_index, worker_group in enumerate(worker_groups):
+            if worker_group["groupName"] != group_name:
+                continue
+
+            containers = worker_group["template"]["spec"]["containers"]
+            container_names = [container["name"] for container in containers]
+
+            if len(containers) == 0:
+                log.error(
+                    f"error updating container resources, the worker group {group_name} has no containers"
+                )
+                return cluster, False
+
+            if container_name == "unspecified":
+                add_values(group_index, 0)
+                return cluster, True
+            elif container_name == "all_containers":
+                for container_index in range(len(containers)):
+                    add_values(group_index, container_index)
+                return cluster, True
+            elif container_name in container_names:
+                container_index = container_names.index(container_name)
+                add_values(group_index, container_index)
                 return cluster, True
 
         return cluster, False
@@ -329,20 +415,73 @@ class ClusterUtils:
                 assert v
         except AssertionError as e:
             log.error(
-                "error creating ray head, the parameters are not fully defined. {} = {}".format(
-                    k, v
-                )
+                f"error duplicating worker group, the parameters are not fully defined. {k} = {v}"
+            )
+            return cluster, False
+        assert self.is_valid_name(new_group_name)
+        assert cluster["spec"]["workerGroupSpecs"]
+
+        worker_groups = cluster["spec"]["workerGroupSpecs"]
+        for _, worker_group in enumerate(worker_groups):
+            if worker_group["groupName"] == group_name:
+                duplicate_group = copy.deepcopy(worker_group)
+                duplicate_group["groupName"] = new_group_name
+                worker_groups.append(duplicate_group)
+                return cluster, True
+
+        log.error(
+            f"error duplicating worker group, no match was found for {group_name}"
+        )
+        return cluster, False
+
+    def delete_worker_group(
+        self,
+        cluster: dict,
+        group_name: str,
+    ) -> Tuple[dict, bool]:
+        """Deletes a worker group in the cluster.
+
+        Parameters:
+        - cluster (dict): The cluster definition.
+        - group_name (str): The name of the worker group to be duplicated.
+
+        Returns:
+        Tuple[dict, bool]: A tuple containing the updated cluster definition and a boolean indicating the success of the operation.
+        """
+        try:
+            arguments = locals()
+            for k, v in arguments.items():
+                assert v
+        except AssertionError as e:
+            log.error(
+                f"error creating ray head, the parameters are not fully defined. {k} = {v}"
             )
             return cluster, False
 
         assert cluster["spec"]["workerGroupSpecs"]
 
-        for i in range(len(cluster["spec"]["workerGroupSpecs"])):
-            if cluster["spec"]["workerGroupSpecs"][i]["groupName"] == group_name:
+        worker_groups = cluster["spec"]["workerGroupSpecs"]
+        first_or_none = next((x for x in worker_groups if x["groupName"] == group_name), None)
+        if first_or_none:
+            worker_groups.remove(first_or_none)
+            return cluster, True
 
-                duplicate_group = copy.deepcopy(cluster["spec"]["workerGroupSpecs"][i])
-                duplicate_group["groupName"] = new_group_name
-                cluster["spec"]["workerGroupSpecs"].append(duplicate_group)
-                return cluster, True
-
+        log.error(
+            f"error removing worker group, no match was found for {group_name}"
+        )
         return cluster, False
+
+    def is_valid_name(self, name: str) -> bool:
+        msg = "The name must be 63 characters or less, begin and end with an alphanumeric character, and contain only dashes, dots, and alphanumerics."
+        if len(name) > 63 or not bool(re.match("^[a-z0-9]([-.]*[a-z0-9])+$", name)):
+            log.error(msg)
+            return False
+        return True
+
+    def is_valid_label(self, name: str) -> bool:
+        msg = "The label name must be 63 characters or less, begin and end with an alphanumeric character, and contain only dashes, underscores, dots, and alphanumerics."
+        if len(name) > 63 or  not bool(re.match("^[a-z0-9]([-._]*[a-z0-9])+$", name)):
+            log.error(msg)
+            return False
+        return True
+

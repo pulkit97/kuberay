@@ -70,23 +70,30 @@ Finally, the cluster_api is the one you always use to implement your cluster cha
 
 ## Code Organization
 
-├── README.md
-├── examples
-│   ├── complete-example.py
-│   ├── use-builder.py
-│   ├── use-director.py
-│   ├── use-raw-with-api.py
-│   └── use-utils.py
-├── setup.cfg
-├── setup.py
-└── src
-    ├── __init__.py
-    ├── constants.py
-    ├── kuberay_cluster_api.py
-    └── utils
-        ├── __init__.py
-        ├── kuberay_cluster_builder.py
-        └── kuberay_cluster_utils.py
+clients/
+└── python-client
+    ├── README.md
+    ├── examples
+    │   ├── complete-example.py
+    │   ├── use-builder.py
+    │   ├── use-director.py
+    │   ├── use-raw-with-api.py
+    │   └── use-utils.py
+    ├── python_client
+    │   ├── LICENSE
+    │   ├── __init__.py
+    │   ├── constants.py
+    │   ├── kuberay_cluster_api.py
+    │   ├── pyproject.toml
+    │   ├── setup.cfg
+    │   └── utils
+    │       ├── __init__.py
+    │       ├── kuberay_cluster_builder.py
+    │       └── kuberay_cluster_utils.py
+    └── python_client_test
+        ├── README.md
+        ├── test_director.py
+        └── test_utils.py
 
 ## For developers
 
@@ -94,9 +101,9 @@ make sure you have installed setuptool
 
 `pip install -U pip setuptools`
 
-from the directory `path/to/kuberay/clients/python-client/python_client`
-
 #### run the pip command
+
+from the directory `path/to/kuberay/clients/python-client/python_client`
 
 `pip install -e .`
 
@@ -104,6 +111,6 @@ from the directory `path/to/kuberay/clients/python-client/python_client`
 
 `pip uninstall python-client`
 
-#### For testing run
+### For testing run
 
- python -m unittest discover '/home/azureuser/go-code/src/github.com/kuberay/clients/pyton_client_test/'
+ `python -m unittest discover 'path/to/kuberay/clients/python_client_test/'`
