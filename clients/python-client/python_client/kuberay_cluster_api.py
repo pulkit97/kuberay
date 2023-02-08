@@ -3,7 +3,6 @@ Set of APIs to manage rayclusters.
 """
 __copyright__ = "Copyright 2021, Microsoft Corp."
 
-import copy
 import logging
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException

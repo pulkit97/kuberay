@@ -1,8 +1,6 @@
 import sys
 import os
 from os import path
-import json
-
 
 """ 
 in case you are working directly with the source, and don't wish to 
