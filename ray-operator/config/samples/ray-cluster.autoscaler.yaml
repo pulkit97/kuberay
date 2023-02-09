@@ -34,7 +34,7 @@ spec:
     # imagePullPolicy optionally overrides the autoscaler container's image pull policy.
     imagePullPolicy: Always
     # Optionally specify the autoscaler container's securityContext.
-    securityContext: {}
+#     securityContext: {}
     env: []
     envFrom: []
     # resources specifies optional resource request and limit overrides for the autoscaler container.
